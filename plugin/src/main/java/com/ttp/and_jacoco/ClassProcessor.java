@@ -108,7 +108,6 @@ public abstract class ClassProcessor {
     }
 
     boolean shouldIncludeClass(String className) {
-        //将win下的分隔符转化为mac的
         className = className.replaceAll("\\\\", "/");
 
         String name = className.substring(className.lastIndexOf("/") + 1);

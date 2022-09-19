@@ -1,5 +1,4 @@
 apply plugin: 'java-library'
-apply plugin: 'kotlin'
 apply plugin: 'maven'
 group='com.github.lzqhh'
 
@@ -9,8 +8,36 @@ dependencies {
     api group: 'org.ow2.asm', name: 'asm', version: '8.0.1'
     api group: 'org.ow2.asm', name: 'asm-commons', version: '8.0.1'
     api group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
+    implementation group: 'org.eclipse.jdt', name: 'org.eclipse.jdt.core', version: '3.19.0'
+    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.5.0.201909110433-r'
 }
 
+buildscript {
+    repositories {
+        maven { url 'https://jitpack.io' }
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:4.2.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.20"
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
+        google()
+        jcenter()
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
 
 sourceCompatibility = "1.8"
 targetCompatibility = "1.8"

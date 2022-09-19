@@ -15,6 +15,7 @@ package com.ttp.and_jacoco.report;
 import org.jacoco.core.analysis.Analyzer;
 import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.analysis.IBundleCoverage;
+import org.jacoco.core.diff.CodeDiff;
 import org.jacoco.core.tools.ExecFileLoader;
 import org.jacoco.report.DirectorySourceFileLocator;
 import org.jacoco.report.FileMultiReportOutput;
@@ -75,7 +76,6 @@ public class ReportGenerator {
            // more than one bundle you will need to add a grouping node to your
            // report
            final IBundleCoverage bundleCoverage = analyzeStructure();
-
            createReport(bundleCoverage);
 
        }catch (Exception e){//不中断流程
@@ -87,7 +87,6 @@ public class ReportGenerator {
 
     private void createReport(final IBundleCoverage bundleCoverage)
             throws IOException {
-
         // Create a concrete report visitor based on some supplied
         // configuration. In this case we use the defaults
         final HTMLFormatter htmlFormatter = new HTMLFormatter();
@@ -167,7 +166,6 @@ public class ReportGenerator {
         return fileSetList;
     }
 
-
     private IBundleCoverage analyzeStructure() throws IOException {
         final CoverageBuilder coverageBuilder = new CoverageBuilder();
         final Analyzer analyzer = new Analyzer(
@@ -175,34 +173,9 @@ public class ReportGenerator {
 
         if (classesDirectories != null && !classesDirectories.isEmpty()) {
             for (File classDir : classesDirectories) {
-                analyzer.analyzeAll(classDir);
+                analyzer.analyzeAll(classDir, CodeDiff.getInstance().getDiffClassList());
             }
         }
-
         return coverageBuilder.getBundle(title);
     }
-
-
-
-    /**
-     * Starts the report generation process
-     *
-     * @param args Arguments to the application. This will be the location of the
-     *             eclipse projects that will be used to generate reports for
-     * @throws IOException
-     */
-    public static void main(final String[] args) throws IOException {
-        File exec = new File("/Users/wzh/ttpc/gitlab/Dealer-Android-Rebuild/app/build/outputs/coverage");
-
-        List<File> sourceDirs = new ArrayList<>();
-        sourceDirs.add(new File("/Users/wzh/ttpc/gitlab/Dealer-Android-Rebuild/app/src/main/java"));
-
-        List<File> classDirs = new ArrayList<>();
-        classDirs.add(new File("/Users/wzh/ttpc/gitlab/Dealer-Android-Rebuild/app/classes"));
-
-        File reportDir = new File("/Users/wzh/ttpc/gitlab/Dealer-Android-Rebuild/app/build/report");
-        ReportGenerator generator = new ReportGenerator(exec.getAbsolutePath(), classDirs, sourceDirs, reportDir);
-        generator.create();
-    }
-
 }

@@ -12,6 +12,9 @@
  *******************************************************************************/
 package org.jacoco.core.analysis;
 
+import org.jacoco.core.diff.ClassInfo;
+import org.jacoco.core.diff.CodeDiff;
+import org.jacoco.core.diff.MethodInfo;
 import org.jacoco.core.internal.analysis.BundleCoverageImpl;
 import org.jacoco.core.internal.analysis.SourceFileCoverageImpl;
 
@@ -19,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**

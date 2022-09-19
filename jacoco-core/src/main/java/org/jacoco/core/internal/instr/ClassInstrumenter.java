@@ -12,11 +12,17 @@
  *******************************************************************************/
 package org.jacoco.core.internal.instr;
 
+import org.jacoco.core.analysis.CoverageBuilder;
+import org.jacoco.core.diff.ClassInfo;
+import org.jacoco.core.diff.CodeDiff;
 import org.jacoco.core.diff.DiffAnalyzer;
+import org.jacoco.core.diff.MethodInfo;
 import org.jacoco.core.internal.flow.ClassProbesVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
+
+import java.util.List;
 
 /**
  * Adapter that instruments a class for coverage tracing.
@@ -59,24 +65,16 @@ public class ClassInstrumenter extends ClassProbesVisitor {
     public MethodVisitor visitMethod(final int access, final String name,
                                      final String desc, final String signature,
                                      final String[] exceptions) {
-        if (DiffAnalyzer.getInstance().containsMethod(className, name, desc)) {
-//            System.out.println("class:" + className + "  method:" + name + "  desc:" + desc + "  has insert probes");
-
-            InstrSupport.assertNotInstrumented(name, className);
-
-            final MethodVisitor mv = cv.visitMethod(access, name, desc, signature,
-                    exceptions);
-
+        if (CodeDiff.getInstance().isContainsMethod(className, name)) {
+            InstrSupport.assertNotInstrumented(name, this.className);
+            MethodVisitor mv = this.cv.visitMethod(access, name, desc, signature, exceptions);
             if (mv == null) {
                 return null;
             }
-            final MethodVisitor frameEliminator = new DuplicateFrameEliminator(mv);
-            final ProbeInserter probeVariableInserter = new ProbeInserter(access,
-                    name, desc, frameEliminator, probeArrayStrategy);
-            return new MethodInstrumenter(probeVariableInserter,
-                    probeVariableInserter);
+            MethodVisitor frameEliminator = new DuplicateFrameEliminator(mv);
+            ProbeInserter probeVariableInserter = new ProbeInserter(access, name, desc, frameEliminator, this.probeArrayStrategy);
+            return new MethodInstrumenter(probeVariableInserter, probeVariableInserter);
         } else {
-//            System.out.println("class:" + className + "  method:" + name + "  desc:" + desc + "  has not insert probes");
             return super.visitMethod(access, name, desc, signature, exceptions);
         }
     }

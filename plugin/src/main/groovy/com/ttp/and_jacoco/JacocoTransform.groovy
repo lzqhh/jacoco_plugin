@@ -4,13 +4,11 @@ import com.android.build.api.transform.*
 import com.android.build.gradle.internal.pipeline.TransformManager
 import com.android.utils.FileUtils
 import com.ttp.and_jacoco.extension.JacocoExtension
-import com.ttp.and_jacoco.task.BranchDiffTask
-import com.ttp.and_jacoco.util.Utils
 import groovy.io.FileType
-import org.codehaus.groovy.runtime.IOGroovyMethods
 import org.gradle.api.Project
-import org.jacoco.core.diff.DiffAnalyzer
-import org.jacoco.core.tools.Util
+import org.jacoco.core.diff.ClassInfo
+import org.jacoco.core.diff.CodeDiff
+import org.jacoco.core.diff.MethodInfo
 
 class JacocoTransform extends Transform {
     Project project
@@ -62,70 +60,28 @@ class JacocoTransform extends Transform {
 
         if (!dirInputs.isEmpty() || !jarInputs.isEmpty()) {
             if (jacocoExtension.jacocoEnable) {
-                //copy class到 app/classes
-                copy(transformInvocation, dirInputs, jarInputs, jacocoExtension.includes)
-                //提交classes 到git
-                gitPush(jacocoExtension.gitPushShell, "jacoco auto commit")
-                //获取差异方法集
-                BranchDiffTask branchDiffTask = project.tasks.findByName('generateReport')
-                branchDiffTask.pullDiffClasses()
+                CodeDiff.getInstance().diffBranchToBranch("E:\\workspace\\AndJacoco", "jacoco_test_zhiqi", "jacoco_test_main_zhiqi")
+                writeDiffToFile()
             }
             //对diff方法插入探针
             inject(transformInvocation, dirInputs, jarInputs, jacocoExtension.includes)
-
         }
     }
 
-    def copy(TransformInvocation transformInvocation, def dirInputs, def jarInputs, List<String> includes) {
-        def classDir = "${project.projectDir}/classes"
-        ClassCopier copier = new ClassCopier(classDir, includes)
-        if (!transformInvocation.incremental) {
-            FileUtils.deletePath(new File(classDir))
-        }
-        if (!dirInputs.isEmpty()) {
-            dirInputs.each { dirInput ->
-                if (transformInvocation.incremental) {
-                    dirInput.changedFiles.each { entry ->
-                        File fileInput = entry.getKey()
-                        File fileOutputJacoco = new File(fileInput.getAbsolutePath().replace(dirInput.file.getAbsolutePath(), classDir))
-                        Status fileStatus = entry.getValue()
+    def writeDiffToFile() {
+        List<ClassInfo> classInfos = CodeDiff.getInstance().getClassInfos()
+        String diffMethodPath = "${project.buildDir.getAbsolutePath()}/outputs/diff/diffMethodFile.txt"
+        File diffMethodParent = new File(diffMethodPath).getParentFile()
+        if (!diffMethodParent.exists()) diffMethodParent.mkdirs()
+        FileOutputStream diffMethodFos = new FileOutputStream(diffMethodPath)
 
-                        switch (fileStatus) {
-                            case Status.ADDED:
-                            case Status.CHANGED:
-                                if (fileInput.isDirectory()) {
-                                    return // continue.
-                                }
-                                copier.doClass(fileInput, fileOutputJacoco)
-                                break
-                            case Status.REMOVED:
-                                if (fileOutputJacoco.exists()) {
-                                    if (fileOutputJacoco.isDirectory()) {
-                                        fileOutputJacoco.deleteDir()
-                                    } else {
-                                        fileOutputJacoco.delete()
-                                    }
-                                    println("REMOVED output file Name:${fileOutputJacoco.name}")
-                                }
-                                break
-                        }
-                    }
-                } else {
-                    dirInput.file.traverse(type: FileType.FILES) { fileInput ->
-                        File fileOutputJacoco = new File(fileInput.getAbsolutePath().replace(dirInput.file.getAbsolutePath(), classDir))
-                        copier.doClass(fileInput, fileOutputJacoco)
-                    }
-                }
+        for (ClassInfo classInfo : classInfos) {
+            diffMethodFos.write(("class:" + classInfo.getPackages() + "." + classInfo.getClassName() + "\n").getBytes())
+            for (MethodInfo methodInfo: classInfo.getMethodInfos()) {
+                diffMethodFos.write((methodInfo.methodName + "\n").getBytes())
             }
         }
-
-        if (!jarInputs.isEmpty()) {
-            jarInputs.each { jarInput ->
-                File jarInputFile = jarInput.file
-                copier.doJar(jarInputFile, null)
-            }
-        }
-
+        diffMethodFos.close()
     }
 
     def inject(TransformInvocation transformInvocation, def dirInputs, def jarInputs, List<String> includes) {
@@ -151,8 +107,7 @@ class JacocoTransform extends Transform {
                                 if (fileInput.isDirectory()) {
                                     return // continue.
                                 }
-                                if (jacocoExtension.jacocoEnable &&
-                                        DiffAnalyzer.getInstance().containsClass(getClassName(fileInput))) {
+                                if (jacocoExtension.jacocoEnable && CodeDiff.getInstance().isContainsClass(getClassName(fileInput))) { //CoverageBuilder.classInfos.contains(getClassName(fileInput))\DiffAnalyzer.getInstance().containsClass(getClassName(fileInput))
                                     injector.doClass(fileInput, fileOutputTransForm)
                                 } else {
                                     FileUtils.copyFile(fileInput, fileOutputTransForm)
@@ -172,10 +127,10 @@ class JacocoTransform extends Transform {
                     }
                 } else {
                     dirInput.file.traverse(type: FileType.FILES) { fileInput ->
-                        File fileOutputTransForm = new File(fileInput.getAbsolutePath().replace(dirInput.file.getAbsolutePath(), dirOutput.getAbsolutePath()))
+                        File fileOutputTransForm = new File(fileInput.getAbsolutePath().replace(
+                                dirInput.file.getAbsolutePath(), dirOutput.getAbsolutePath()))
                         FileUtils.mkdirs(fileOutputTransForm.parentFile)
-                        if (jacocoExtension.jacocoEnable &&
-                                DiffAnalyzer.getInstance().containsClass(getClassName(fileInput))) {
+                        if (jacocoExtension.jacocoEnable && CodeDiff.getInstance().isContainsClass(getClassName(fileInput))) { //CoverageBuilder.classInfos.contains(getClassName(fileInput))\DiffAnalyzer.getInstance().containsClass(getClassName(fileInput))
                             injector.doClass(fileInput, fileOutputTransForm)
                         } else {
                             FileUtils.copyFile(fileInput, fileOutputTransForm)
@@ -215,44 +170,6 @@ class JacocoTransform extends Transform {
                 }
             }
         }
-    }
-
-    def gitPush(String shell, String commitMsg) {
-        println("jacoco 执行git命令")
-//
-        String[] cmds
-        if (Utils.windows) {
-            cmds = new String[3]
-            cmds[0] = jacocoExtension.getGitBashPath()
-            cmds[1] = shell
-            cmds[2] = commitMsg
-        } else {
-            cmds = new String[2]
-            cmds[0] = shell
-            cmds[1] = commitMsg
-        }
-        println("cmds=" + cmds)
-        Process pces = Runtime.getRuntime().exec(cmds)
-        String result = IOGroovyMethods.getText(new BufferedReader(new InputStreamReader(pces.getIn())))
-        String error = IOGroovyMethods.getText(new BufferedReader(new InputStreamReader(pces.getErr())))
-
-        println("jacoco git succ :" + result)
-        println("jacoco git error :" + error)
-
-        pces.closeStreams()
-    }
-
-    String getUniqueHashName(File fileInput) {
-        final String fileInputName = fileInput.getName()
-        if (fileInput.isDirectory()) {
-            return fileInputName
-        }
-        final String parentDirPath = fileInput.getParentFile().getAbsolutePath()
-        final String pathMD5 = Util.MD5(parentDirPath)
-        final int extSepPos = fileInputName.lastIndexOf('.')
-        final String fileInputNamePrefix =
-                (extSepPos >= 0 ? fileInputName.substring(0, extSepPos) : fileInputName)
-        return fileInputNamePrefix + '_' + pathMD5
     }
 
     def getClassName(File f) {

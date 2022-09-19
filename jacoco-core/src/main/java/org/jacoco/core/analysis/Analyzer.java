@@ -14,6 +14,8 @@ package org.jacoco.core.analysis;
 
 import org.jacoco.core.data.ExecutionData;
 import org.jacoco.core.data.ExecutionDataStore;
+import org.jacoco.core.diff.ClassInfo;
+import org.jacoco.core.diff.MethodInfo;
 import org.jacoco.core.internal.ContentTypeDetector;
 import org.jacoco.core.internal.InputStreams;
 import org.jacoco.core.internal.Pack200Streams;
@@ -31,6 +33,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
@@ -226,6 +229,34 @@ public class Analyzer {
 				count += analyzeAll(in, file.getPath());
 			} finally {
 				in.close();
+			}
+		}
+		return count;
+	}
+
+	public int analyzeAll(final File file, List<String> diffClassList) throws IOException {
+		int count = 0;
+		if (file.isDirectory()) {
+			for (final File f : file.listFiles()) {
+				count += analyzeAll(f, diffClassList);
+			}
+		} else {
+			boolean isDiffClass = false;
+			for (String diffClass : diffClassList) {
+				String filePathTmp = file.getPath().replace(File.separator, ".");
+				if (filePathTmp.contains(diffClass)) {
+					isDiffClass = true;
+					break;
+				}
+			}
+			if (isDiffClass) {
+				System.out.println("analyzeAllDiff: " + file.getPath());
+				final InputStream in = new FileInputStream(file);
+				try {
+					count += analyzeAll(in, file.getPath());
+				} finally {
+					in.close();
+				}
 			}
 		}
 		return count;

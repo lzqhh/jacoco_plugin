@@ -1,6 +1,7 @@
 package org.jacoco.core.diff;
 
 
+import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.data.MethodInfo;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -83,7 +84,6 @@ public class DiffAnalyzer {
         }
         return false;
     }
-
 
     public boolean containsClass(String className) {
         return diffClass.contains(className);

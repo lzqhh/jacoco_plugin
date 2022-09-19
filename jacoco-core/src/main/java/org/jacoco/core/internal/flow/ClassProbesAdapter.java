@@ -12,11 +12,17 @@
  *******************************************************************************/
 package org.jacoco.core.internal.flow;
 
+import org.jacoco.core.analysis.CoverageBuilder;
+import org.jacoco.core.diff.ClassInfo;
+import org.jacoco.core.diff.CodeDiff;
 import org.jacoco.core.diff.DiffAnalyzer;
+import org.jacoco.core.diff.MethodInfo;
 import org.jacoco.core.internal.instr.InstrSupport;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.commons.AnalyzerAdapter;
+
+import java.util.List;
 
 /**
  * A {@link org.objectweb.asm.ClassVisitor} that calculates probes for every
@@ -61,7 +67,7 @@ public class ClassProbesAdapter extends ClassVisitor
     public MethodVisitor visitMethod(final int access, final String name,
                                      final String desc, final String signature,
                                      final String[] exceptions) {
-        if (DiffAnalyzer.getInstance().containsMethod(className, name, desc)) {
+        if (CodeDiff.getInstance().isContainsMethod(className, name)) { // DiffAnalyzer.getInstance().containsMethod(className, name, desc)
 //        if ("com/example/jacoco_plugin/Hello".equals(className) && ("()V".equals(desc) && "lambda$hello$0".equals(name)) || ("()V".equals(desc) && "hello".equals(name))) {
             final MethodProbesVisitor methodProbes;
             final MethodProbesVisitor mv = (MethodProbesVisitor) cv.visitMethod(access, name, desc,
@@ -109,5 +115,4 @@ public class ClassProbesAdapter extends ClassVisitor
     public int nextId() {
         return counter++;
     }
-
 }

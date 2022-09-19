@@ -1,5 +1,7 @@
 package com.ttp.and_jacoco.merge;
 
+import com.android.ddmlib.Log;
+
 import org.jacoco.core.tools.ExecFileLoader;
 
 import java.io.File;
@@ -72,6 +74,7 @@ public class MergeExec {
             if (inputFile.isDirectory()) {
                 continue;
             }
+            Log.v("MergeExec", "load ec");
             try {
                 System.out.println("Loading execution data file " + inputFile.getAbsolutePath());
                 loader.load(inputFile);

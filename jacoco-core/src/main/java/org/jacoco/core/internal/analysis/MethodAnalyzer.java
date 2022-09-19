@@ -12,6 +12,7 @@
  *******************************************************************************/
 package org.jacoco.core.internal.analysis;
 
+import org.jacoco.core.diff.CodeDiff;
 import org.jacoco.core.internal.flow.IFrame;
 import org.jacoco.core.internal.flow.LabelInfo;
 import org.jacoco.core.internal.flow.MethodProbesVisitor;
@@ -21,6 +22,8 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TryCatchBlockNode;
+
+import jdk.jfr.internal.Repository;
 
 /**
  * A {@link MethodProbesVisitor} that builds the {@link Instruction}s of a
@@ -43,6 +46,18 @@ public class MethodAnalyzer extends MethodProbesVisitor {
 	@Override
 	public void accept(final MethodNode methodNode,
 			final MethodVisitor methodVisitor) {
+		boolean isDiffMethod = false;
+		for (String diffMethod : CodeDiff.getInstance().getDiffMethodList()) {
+			String currentMethod = methodNode.name;
+			if (currentMethod.equals(diffMethod)) {
+				isDiffMethod = true;
+				break;
+			}
+		}
+		if (!isDiffMethod) {
+			return;
+		}
+		System.out.println("diffMethod: " + methodNode.name);
 		methodVisitor.visitCode();
 		for (final TryCatchBlockNode n : methodNode.tryCatchBlocks) {
 			n.accept(methodVisitor);
